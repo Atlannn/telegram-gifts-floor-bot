@@ -9,6 +9,10 @@ on:
         description: "Print the messages instead of sending them"
         type: boolean
         default: true
+      test_message:
+        description: "Send one test message to the channel (ignores dry run)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write           # lets the built-in token commit state.json

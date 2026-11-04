@@ -46,7 +46,7 @@ fragment.com/gifts (one request) and announces anything unseen. GitHub may delay
 3. Fork this repo. In Settings, Secrets and variables, Actions, add `TG_BOT_TOKEN` and `TG_CHAT_ID`
    (the channel, e.g. `@my_channel`).
 4. In the Actions tab run "Post to Telegram channel" and "Check for new gift collections" once each with
-   *dry run* on, then let the schedules work (07:00 UTC daily, every 15 minutes). `state.json` remembers known collections and the last posted day.
+   *dry run* on, then let the schedules work (daily summary tried at 07:00, 08:00 and 09:00 UTC, a day is posted once; new-collection check every 15 minutes). `state.json` remembers known collections and the last posted day.
 
 Locally: `python bot.py --dry-run` prints the messages and sends nothing. Python 3.9+, standard library only.
 Tokens are read from the environment and are never stored in the repo.

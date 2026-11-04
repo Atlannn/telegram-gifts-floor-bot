@@ -2,7 +2,9 @@ name: Post to Telegram channel
 
 on:
   schedule:
-    - cron: "0 7 * * *"   # 07:00 UTC, after the data repo collects (about 06:20) and publishes
+    # The data repo collects at about 06:20 UTC, but GitHub can delay scheduled runs. Retrying is safe:
+    # state.json remembers the last posted day, so a day is never posted twice.
+    - cron: "0 7,8,9 * * *"
   workflow_dispatch:
     inputs:
       dry_run:

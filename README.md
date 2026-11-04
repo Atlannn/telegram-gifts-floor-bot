@@ -28,14 +28,19 @@ Moves are computed on **fixed-price floors** only (auction prices jump around), 
 or more, with a change of at least 10%, top 5 up and top 5 down. Constants are at the top of `bot.py`.
 A gift that appears in the data for the first time gets its own "New gift collection" post.
 
+New collections are caught faster by `check_new.py`: every 15 minutes it reads the list on
+fragment.com/gifts (one request) and announces anything unseen. GitHub may delay scheduled runs by
+10-30 minutes, so expect a post within roughly 15-45 minutes. The daily job and this check share
+`state.json`, so a collection is announced only once.
+
 ## Run your own copy
 
 1. Create a bot with [@BotFather](https://t.me/BotFather) and copy its token.
 2. Create a channel and add the bot as an administrator with the right to post.
 3. Fork this repo. In Settings, Secrets and variables, Actions, add `TG_BOT_TOKEN` and `TG_CHAT_ID`
    (the channel, e.g. `@my_channel`).
-4. In the Actions tab run "Post to Telegram channel" once with *dry run* on, then let the schedule work
-   (07:00 UTC daily). `state.json` remembers known collections and the last posted day.
+4. In the Actions tab run "Post to Telegram channel" and "Check for new gift collections" once each with
+   *dry run* on, then let the schedules work (07:00 UTC daily, every 15 minutes). `state.json` remembers known collections and the last posted day.
 
 Locally: `python bot.py --dry-run` prints the messages and sends nothing. Python 3.9+, standard library only.
 Tokens are read from the environment and are never stored in the repo.
@@ -44,8 +49,9 @@ Tokens are read from the environment and are never stored in the repo.
 
 - Prices are in GRAM (the coin formerly called TON). A floor is the cheapest lot, an asking price, not a
   sale price; fees are not included.
-- A new collection is announced when the dataset first contains it, so up to a day after it appears on Fragment.
-  A collection with nothing for sale has no row and is announced only once a lot is listed.
+- A new collection is announced when it first shows up in the list on fragment.com/gifts (within about 15-45
+  minutes). A suspicious list (under 50 collections, or more than 5 new at once) is ignored and reported as
+  a warning instead of being posted.
 - Collection names are Fragment slugs (`plushpepe`), not display names.
 
 ## License

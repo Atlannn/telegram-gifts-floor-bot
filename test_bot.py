@@ -17,11 +17,14 @@ LOT_PAGE = ('<a href="/gift/lolpop-98734" class="tm-grid-item"><div class="tm-gr
             '<div class="tm-grid-item-value tm-value icon-before icon-ton">5</div></a>')
 
 
-def test_movers_threshold_and_min_price():
+def test_movers_have_no_minimum_price_or_move():
     up, down = bot.movers(D2, D1)
-    assert [m[0] for m in up] == ["a"]       # +20%; b is +80% but under MIN_PRICE
-    assert [m[0] for m in down] == ["c"]     # -20%
+    assert [m[0] for m in up] == ["b", "a"]      # b: 5 -> 9 (+80%) now counts, a: +20%
+    assert [m[0] for m in down] == ["c"]         # -20%
     assert bot.movers(D2, {}) == ([], [])
+    tiny = {"x": {"floor": 1000.0, "fixed": 1001.0}}
+    assert bot.movers(tiny, {"x": {"floor": 1000.0, "fixed": 1000.0}})[0][0][3] == 0.1  # +0.1% is shown
+    assert bot.movers(tiny, tiny) == ([], [])    # no change, no line
 
 
 def test_pepe_without_fixed_is_not_a_mover():
@@ -46,7 +49,10 @@ def test_same_day_is_not_posted_twice():
 def test_daily_message_format():
     text = bot.daily_message("2026-11-05", D2, D1, NAMES)
     assert "5 Nov 2026" in text and "Plush Pepes</a>: <b>7 500 GRAM</b> (auction)" in text
-    assert "Alpha Caps" in text and "+20%" in text and "Up in 24h" in text and "Down in 24h" in text
+    assert "Alpha Caps" in text and "Up in 24h" in text and "Down in 24h" in text
+    assert "9 GRAM (+4 GRAM, +80%)" in text           # price, change in GRAM, change in percent
+    assert "40 GRAM (-10 GRAM, -20%)" in text
+    assert "🎁 <a" in text                            # emoji before the name (default for an unlisted slug)
 
 
 def test_daily_message_without_names_falls_back_to_slug():
@@ -64,9 +70,9 @@ def test_parse_names_and_lot():
 def test_new_gift_message_with_and_without_lot():
     lot = bot.parse_cheapest_lot(LOT_PAGE)
     text = bot.new_gift_message("lolpop", {}, lot)
-    assert "New gift collection: Lol Pop" in text and "Floor: <b>5 GRAM</b> (auction)" in text
+    assert "New gift collection: 🍭 Lol Pop" in text and "Floor: <b>5 GRAM</b> (auction)" in text
     assert "fragment.com/gifts/lolpop" in text
-    assert "New gift collection: lolpop" in bot.new_gift_message("lolpop")
+    assert "New gift collection: 🍭 lolpop" in bot.new_gift_message("lolpop")
 
 
 def test_parse_rows():
@@ -107,3 +113,15 @@ def test_sample_posts_cover_every_kind(monkeypatch):
     assert posts[0][0] is None and "Up in 24h" in posts[0][1] and "Down in 24h" in posts[0][1]
     assert posts[1][0].endswith(".jpg") and posts[2][0] is None
     assert all("SAMPLE POST" in t for _, t in posts)
+
+
+def test_every_known_collection_has_an_emoji():
+    import json
+    import emojis
+    known = json.load(open(bot.STATE_PATH, encoding="utf-8"))["known"]
+    assert [s for s in known if s not in emojis.EMOJI] == []
+    assert emojis.emoji_for("brand_new_gift") == emojis.DEFAULT
+
+
+def test_small_move_uses_one_decimal():
+    assert bot.pct_str(0.14) == "0.1%" and bot.pct_str(9.96) == "10.0%" and bot.pct_str(27.6) == "28%"

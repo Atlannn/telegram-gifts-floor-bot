@@ -24,15 +24,15 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from emojis import emoji_for
+
 CSV_URL = "https://raw.githubusercontent.com/Atlannn/telegram-gifts-floor-price/main/data/floor_prices.csv"
 FRAGMENT = "https://fragment.com"
 SITE_URL = "https://balticassets.eu/en/crypto/telegram-gifts/"
 STATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state.json")
 UA = "Mozilla/5.0 (compatible; telegram-gifts-floor-bot/0.1; +https://github.com/Atlannn/telegram-gifts-floor-bot)"
 
-MIN_CHANGE = 10.0   # percent, smallest day-over-day move worth a line
-MIN_PRICE = 20.0    # GRAM, ignore cheap gifts where 2 GRAM looks like +40%
-TOP_N = 5
+TOP_N = 5           # lines in each of the Up / Down blocks; no minimum price, no minimum move
 CAPTION_LIMIT = 1024  # Telegram limit for a photo caption
 
 NAME_RE = re.compile(r'<a href="/gifts/([a-z0-9]+)"[^>]*>.*?class="tm-main-filters-name">([^<]+)</div>', re.S)
@@ -44,6 +44,10 @@ LOT_PRICE_RE = re.compile(r'icon-ton">([\d,\.]+)</div>')
 
 def num(v):
     return float(v) if v not in ("", None) else None
+
+
+def pct_str(p):
+    return f"{p:.0f}%" if p >= 10 else f"{p:.1f}%"
 
 
 def fmt(x):
@@ -73,7 +77,7 @@ def label(slug, names):
 
 
 def link(slug, names):
-    return f'<a href="{FRAGMENT}/gifts/{slug}">{html.escape(label(slug, names))}</a>'
+    return f'{emoji_for(slug)} <a href="{FRAGMENT}/gifts/{slug}">{html.escape(label(slug, names))}</a>'
 
 
 def parse_cheapest_lot(page):
@@ -114,10 +118,8 @@ def movers(today, prev):
         p = prev.get(slug)
         if not p or t["fixed"] is None or p["fixed"] is None or p["fixed"] <= 0:
             continue
-        if max(t["fixed"], p["fixed"]) < MIN_PRICE:
-            continue
         pct = (t["fixed"] - p["fixed"]) / p["fixed"] * 100
-        if abs(pct) >= MIN_CHANGE:
+        if pct != 0:
             moves.append((slug, t["fixed"], p["fixed"], pct))
     up = sorted((m for m in moves if m[3] > 0), key=lambda m: -m[3])[:TOP_N]
     down = sorted((m for m in moves if m[3] < 0), key=lambda m: m[3])[:TOP_N]
@@ -136,12 +138,13 @@ def daily_message(date, today, prev, names=None):
         lines.append(f"{link(slug, names)}: <b>{fmt(v['floor'])} GRAM</b>{note}")
     if prev:
         up, down = movers(today, prev)
-        for title, items, sign in (("\U0001F4C8 <b>Up in 24h</b>", up, "+"), ("\U0001F4C9 <b>Down in 24h</b>", down, "")):
+        for title, items, sign in (("\U0001F4C8 <b>Up in 24h</b>", up, "+"), ("\U0001F4C9 <b>Down in 24h</b>", down, "-")):
             if items:
                 lines += ["", title]
-                lines += [f"{link(s, names)}: {fmt(now)} ({sign}{pct:.0f}%)" for s, now, was, pct in items]
+                lines += [f"{link(s, names)}: {fmt(now)} GRAM ({sign}{fmt(abs(now - was))} GRAM, {sign}{pct_str(abs(pct))})"
+                          for s, now, was, pct in items]
         if not up and not down:
-            lines += ["", f"<i>No fixed-price floor moved by {MIN_CHANGE:.0f}% or more.</i>"]
+            lines += ["", "<i>No fixed-price floor changed since yesterday.</i>"]
     lines += ["", "<i>Floor = cheapest lot on Fragment, an asking price, fees not included.</i>",
               f'Rarity and profit calculator: <a href="{SITE_URL}">balticassets.eu</a>']
     return "\n".join(lines)
@@ -151,7 +154,7 @@ def new_gift_message(slug, names=None, lot=None):
     """Caption/text for a new collection. Uses the cheapest lot's name and price when available."""
     names = names or {}
     title = (lot or {}).get("name") or label(slug, names)
-    lines = [f"\U0001F195 <b>New gift collection: {html.escape(title)}</b>", ""]
+    lines = [f"\U0001F195 <b>New gift collection: {emoji_for(slug)} {html.escape(title)}</b>", ""]
     if lot and lot.get("price") is not None:
         lines.append(f"Floor: <b>{fmt(lot['price'])} GRAM</b>" + (" (auction)" if lot["auction"] else ""))
     lines += [f'<a href="{FRAGMENT}/gifts/{slug}">Open on Fragment</a>',
@@ -190,6 +193,7 @@ def plan(days, state):
     return date, today, prev, sorted(set(today) - known), new_state, True
 
 
+FACTORS = (1.25, 0.78, 1.11, 0.93, 1.42, 0.64, 1.06, 0.87)  # made-up "yesterday / today" ratios for the sample
 SAMPLE_NOTE = "<i>SAMPLE POST, please ignore. {}</i>\n\n"
 
 
@@ -201,7 +205,7 @@ def sample_posts():
     date = max(days)
     today = days[date]
     # yesterday is invented (every fixed-price floor shifted up or down) so that the Up / Down blocks show
-    prev = {s: {"floor": v["floor"], "fixed": v["fixed"] and round(v["fixed"] * (0.78 if i % 2 else 1.25), 1)}
+    prev = {s: {"floor": v["floor"], "fixed": v["fixed"] and round(v["fixed"] * FACTORS[i % len(FACTORS)], 1)}
             for i, (s, v) in enumerate(sorted(today.items()))}
     names = fetch_names()
     lot = fetch_lot("lolpop")

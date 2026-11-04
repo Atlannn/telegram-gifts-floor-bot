@@ -16,20 +16,22 @@ Telegram Gifts · Floor Prices
 5 Nov 2026
 
 🏆 Highest floors
-Plush Pepes: 7 500 GRAM (auction)
-Algorithm Cups: 3 450 GRAM
+🐸 Plush Pepes: 7 500 GRAM (auction)
+🏆 Algorithm Cups: 3 450 GRAM
 ...
 📈 Up in 24h
-Toy Bears: 37 (+25%)
+🧸 Toy Bears: 37 GRAM (+7 GRAM, +25%)
 📉 Down in 24h
-Durov's Glasses: 150 (-15%)
+🕶 Durov's Glasses: 150 GRAM (-26 GRAM, -15%)
 ```
 
 The post is HTML-formatted with collection names linked to Fragment. A new collection comes with a picture
 of its cheapest lot (taken from Fragment); if Telegram cannot load the picture the post is sent as text.
 
-Moves are computed on **fixed-price floors** only (auction prices jump around), for gifts priced at 20 GRAM
-or more, with a change of at least 10%, top 5 up and top 5 down. Constants are at the top of `bot.py`.
+Moves are computed on **fixed-price floors** only (auction prices jump around), for every collection with no
+minimum price and no minimum change: the 5 biggest rises and the 5 biggest falls by percent, each shown as
+the new floor, the change in GRAM and the change in percent. Every collection name has an emoji in front of it
+(`emojis.py`, regular Unicode emoji chosen by meaning, a new collection gets 🎁).
 A gift that appears in the data for the first time gets its own "New gift collection" post.
 
 New collections are caught faster by `check_new.py`: every 15 minutes it reads the list on

@@ -84,3 +84,26 @@ def test_photo_falls_back_to_text(monkeypatch):
     monkeypatch.setattr(bot, "_call", fake_call)
     bot.send_photo("t", "@c", "https://x/y.jpg", "caption")
     assert calls == ["sendPhoto", "sendMessage"]
+
+
+def test_sample_posts_cover_every_kind(monkeypatch):
+    csv_text = ("date,collection,floor_gram,floor_fixed_gram,lots_seen,auctions_seen\n"
+                "2026-11-04,a,100.0,100.0,3,0\n2026-11-04,b,200.0,200.0,3,0\n2026-11-04,pepe,7000.0,,3,3\n")
+
+    class Resp:
+        def read(self):
+            return csv_text.encode()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+    monkeypatch.setattr(bot.urllib.request, "urlopen", lambda *a, **k: Resp())
+    monkeypatch.setattr(bot, "fetch_names", lambda: {})
+    monkeypatch.setattr(bot, "fetch_lot", lambda slug: bot.parse_cheapest_lot(LOT_PAGE))
+    posts = bot.sample_posts()
+    assert len(posts) == 3
+    assert posts[0][0] is None and "Up in 24h" in posts[0][1] and "Down in 24h" in posts[0][1]
+    assert posts[1][0].endswith(".jpg") and posts[2][0] is None
+    assert all("SAMPLE POST" in t for _, t in posts)

@@ -190,6 +190,31 @@ def plan(days, state):
     return date, today, prev, sorted(set(today) - known), new_state, True
 
 
+SAMPLE_NOTE = "<i>SAMPLE POST, please ignore. {}</i>\n\n"
+
+
+def sample_posts():
+    """One of every kind of post, for --test: real floors from the latest day, made-up daily changes."""
+    req = urllib.request.Request(CSV_URL, headers={"User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        days = parse_rows(r.read().decode("utf-8"))
+    date = max(days)
+    today = days[date]
+    # yesterday is invented (every fixed-price floor shifted up or down) so that the Up / Down blocks show
+    prev = {s: {"floor": v["floor"], "fixed": v["fixed"] and round(v["fixed"] * (0.78 if i % 2 else 1.25), 1)}
+            for i, (s, v) in enumerate(sorted(today.items()))}
+    names = fetch_names()
+    lot = fetch_lot("lolpop")
+    photo = (lot or {}).get("image")
+    return [
+        (None, SAMPLE_NOTE.format("1/3 daily summary: floors are real, the 24h changes are made up.")
+         + daily_message(date, today, prev, names)),
+        (photo, SAMPLE_NOTE.format("2/3 new collection with a picture.") + new_gift_message("lolpop", names, lot)),
+        (None, SAMPLE_NOTE.format("3/3 new collection as text, used when the picture cannot be loaded.")
+         + new_gift_message("lolpop", names, lot)),
+    ]
+
+
 def _call(token, method, fields):
     data = urllib.parse.urlencode(fields).encode()
     req = urllib.request.Request(f"https://api.telegram.org/bot{token}/{method}", data=data,
@@ -226,11 +251,13 @@ def main(argv=None):
         if not (token and chat):
             print("error: set TG_BOT_TOKEN and TG_CHAT_ID", file=sys.stderr)
             return 1
-        # the same path a real "new collection" post takes: caption with HTML and a picture
-        lot = fetch_lot("lolpop")
-        caption = "<i>Test post, please ignore: the bot is connected.</i>\n\n" + new_gift_message("lolpop", fetch_names(), lot)
-        send_photo(token, chat, (lot or {}).get("image"), caption)
-        print("test message sent")
+        posts = sample_posts()
+        for photo, text in posts:
+            if photo:
+                send_photo(token, chat, photo, text)
+            else:
+                send(token, chat, text)
+        print(f"sent {len(posts)} sample posts")
         return 0
     req = urllib.request.Request(CSV_URL, headers={"User-Agent": UA})
     with urllib.request.urlopen(req, timeout=30) as r:

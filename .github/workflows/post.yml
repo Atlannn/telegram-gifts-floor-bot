@@ -10,7 +10,7 @@ on:
         type: boolean
         default: true
       test_message:
-        description: "Send one test message to the channel (ignores dry run)"
+        description: "Send sample posts of every kind to the channel (ignores dry run)"
         type: boolean
         default: false
 

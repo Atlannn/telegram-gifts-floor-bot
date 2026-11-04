@@ -10,11 +10,11 @@ def test_parse_slugs():
 
 
 def test_announces_one_new_collection_once():
-    msgs, st, err = check_new.plan(SLUGS + ["fresh"], STATE)
-    assert err is None and len(msgs) == 1 and "fresh" in msgs[0] and "fresh" in st["known"]
+    new, st, err = check_new.plan(SLUGS + ["fresh"], STATE)
+    assert err is None and new == ["fresh"] and "fresh" in st["known"]
     assert st["last_posted"] == "2026-11-04"
-    msgs2, st2, _ = check_new.plan(SLUGS + ["fresh"], st)
-    assert msgs2 == [] and st2 == st
+    new2, st2, _ = check_new.plan(SLUGS + ["fresh"], st)
+    assert new2 == [] and st2 == st
 
 
 def test_nothing_new():
@@ -22,15 +22,15 @@ def test_nothing_new():
 
 
 def test_short_list_is_ignored():
-    msgs, st, err = check_new.plan(["a", "b"], STATE)
-    assert msgs == [] and st == STATE and err
+    new, st, err = check_new.plan(["a", "b"], STATE)
+    assert new == [] and st == STATE and err
 
 
 def test_many_new_at_once_is_ignored():
-    msgs, st, err = check_new.plan(SLUGS + [f"n{i}" for i in range(6)], STATE)
-    assert msgs == [] and st == STATE and err
+    new, st, err = check_new.plan(SLUGS + [f"n{i}" for i in range(6)], STATE)
+    assert new == [] and st == STATE and err
 
 
 def test_first_run_only_remembers():
-    msgs, st, err = check_new.plan(SLUGS, {"known": [], "last_posted": None})
-    assert msgs == [] and st["known"] == SLUGS and err is None
+    new, st, err = check_new.plan(SLUGS, {"known": [], "last_posted": None})
+    assert new == [] and st["known"] == SLUGS and err is None

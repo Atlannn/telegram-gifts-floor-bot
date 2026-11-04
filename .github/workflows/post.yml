@@ -26,17 +26,23 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Test message
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.test_message }}
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: python bot.py --test
       - name: Dry run
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        if: ${{ github.event_name == 'workflow_dispatch' && !inputs.test_message && inputs.dry_run }}
         run: python bot.py --dry-run
       - name: Post
-        if: ${{ github.event_name == 'schedule' || !inputs.dry_run }}
+        if: ${{ github.event_name == 'schedule' || (!inputs.test_message && !inputs.dry_run) }}
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         run: python bot.py
       - name: Save state
-        if: ${{ github.event_name == 'schedule' || !inputs.dry_run }}
+        if: ${{ github.event_name == 'schedule' || (!inputs.test_message && !inputs.dry_run) }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

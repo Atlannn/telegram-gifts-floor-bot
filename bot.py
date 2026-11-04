@@ -144,7 +144,16 @@ def send(token, chat_id, text):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--dry-run", action="store_true", help="print messages, send nothing, keep state")
+    ap.add_argument("--test", action="store_true", help="send one test message to the channel and exit")
     args = ap.parse_args(argv)
+    if args.test:
+        token, chat = os.environ.get("TG_BOT_TOKEN"), os.environ.get("TG_CHAT_ID")
+        if not (token and chat):
+            print("error: set TG_BOT_TOKEN and TG_CHAT_ID", file=sys.stderr)
+            return 1
+        send(token, chat, "Test message: the bot is connected. Daily floor summaries start tomorrow.")
+        print("test message sent")
+        return 0
     req = urllib.request.Request(CSV_URL, headers={"User-Agent": UA})
     with urllib.request.urlopen(req, timeout=30) as r:
         days = parse_rows(r.read().decode("utf-8"))

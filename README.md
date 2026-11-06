@@ -34,9 +34,9 @@ the new floor, the change in GRAM and the change in percent. Every collection na
 (`emojis.py`, regular Unicode emoji chosen by meaning, a new collection gets 🎁).
 A gift that appears in the data for the first time gets its own "New gift collection" post.
 
-New collections are caught faster by `check_new.py`: every 15 minutes it reads the list on
-fragment.com/gifts (one request) and announces anything unseen. GitHub may delay scheduled runs by
-10-30 minutes, so expect a post within roughly 15-45 minutes. The daily job and this check share
+New collections are caught faster by `check_new.py`: every 15 minutes (as scheduled; GitHub often runs it much less often) it reads the list on
+fragment.com/gifts (one request) and announces anything unseen. In early November 2026 the runs came about
+every 6-7 hours instead, so a new collection may be announced hours after it appears. The daily job and this check share
 `state.json`, so a collection is announced only once.
 
 ## Run your own copy

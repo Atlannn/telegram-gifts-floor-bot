@@ -20,6 +20,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -52,6 +53,22 @@ def pct_str(p):
 
 def fmt(x):
     return f"{x:,.0f}".replace(",", " ") if x >= 100 else f"{x:g}"
+
+
+def urlopen_retry(req, tries=4):
+    """urlopen that retries transient errors (5xx, 429, network) with a growing pause."""
+    for i in range(tries):
+        try:
+            return urllib.request.urlopen(req, timeout=30)
+        except urllib.error.HTTPError as e:
+            if e.code < 500 and e.code != 429 or i == tries - 1:
+                raise
+            wait = int(e.headers.get("Retry-After") or 0) if e.code == 429 else 0
+        except urllib.error.URLError:
+            if i == tries - 1:
+                raise
+            wait = 0
+        time.sleep(min(max(wait, 5 * 2 ** i), 60))
 
 
 def http_get(url):
@@ -200,7 +217,7 @@ SAMPLE_NOTE = "<i>SAMPLE POST, please ignore. {}</i>\n\n"
 def sample_posts():
     """One of every kind of post, for --test: real floors from the latest day, made-up daily changes."""
     req = urllib.request.Request(CSV_URL, headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=30) as r:
+    with urlopen_retry(req) as r:
         days = parse_rows(r.read().decode("utf-8"))
     date = max(days)
     today = days[date]
@@ -223,7 +240,7 @@ def _call(token, method, fields):
     data = urllib.parse.urlencode(fields).encode()
     req = urllib.request.Request(f"https://api.telegram.org/bot{token}/{method}", data=data,
                                  headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=30) as r:
+    with urlopen_retry(req) as r:
         if not json.load(r).get("ok"):
             raise RuntimeError("Telegram refused the message")
 
@@ -264,7 +281,7 @@ def main(argv=None):
         print(f"sent {len(posts)} sample posts")
         return 0
     req = urllib.request.Request(CSV_URL, headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=30) as r:
+    with urlopen_retry(req) as r:
         days = parse_rows(r.read().decode("utf-8"))
     state = load_state()
     date, today, prev, new_slugs, new_state, post_daily = plan(days, state)
